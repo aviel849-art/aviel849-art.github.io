@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aviel849-art.github.io/sitemap.xml
