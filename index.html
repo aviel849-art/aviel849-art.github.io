@@ -530,6 +530,25 @@ return {
     root.replaceChildren(frag);
   };
   render();
+
+  // swipe between sample pages (viewer open, not zoomed); RTL: finger left->right = next page
+  var sx = null, sy = null, multi = false;
+  document.addEventListener('touchstart', function (e) {
+    multi = e.touches.length > 1;
+    if (multi) { sx = null; return; }
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (sx === null || multi) return;
+    var st = comp.state || {};
+    var open = typeof st.vb === 'number';
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (!open || st.zoom) return;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    var btn = document.querySelector(dx > 0 ? 'button[aria-label="העמוד הבא"]' : 'button[aria-label="העמוד הקודם"]');
+    if (btn) btn.click();
+  }, { passive: true });
 })();
 </script>
 </body>
