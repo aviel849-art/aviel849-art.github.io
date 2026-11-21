@@ -20,6 +20,7 @@ a{color:#1E3A8A}a:hover{color:#172554}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-8px) rotate(-2deg)}}
 @media (prefers-reduced-motion: reduce){.card,.btn,.float1,.float2,.float3,.bob{animation:none;transition:none}}
 </style>
+<style>html[data-swipe="1"] [role=dialog]{touch-action:pan-y pinch-zoom}</style>
 </head>
 <body>
 <div id="site-root"></div>
@@ -528,27 +529,34 @@ return {
     var frag = document.createDocumentFragment();
     renderNodes(tpl.content.childNodes, vals, frag);
     root.replaceChildren(frag);
+    var st0 = comp.state || {};
+    document.documentElement.setAttribute('data-swipe', (typeof st0.vb === 'number' && !st0.zoom) ? '1' : '0');
   };
   render();
 
   // swipe between sample pages (viewer open, not zoomed); RTL: finger left->right = next page
-  var sx = null, sy = null, multi = false;
+  var sx = null, sy = null, lx = null, ly = null, multi = false;
+  function viewerSwipeable() { var st = comp.state || {}; return typeof st.vb === 'number' && !st.zoom; }
+  function finish(e) {
+    if (e && e.type === 'touchend' && e.changedTouches && e.changedTouches.length) { lx = e.changedTouches[0].clientX; ly = e.changedTouches[0].clientY; }
+    if (sx === null || multi) { sx = null; return; }
+    var dx = lx - sx, dy = ly - sy; sx = null;
+    if (!viewerSwipeable()) return;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    var btn = document.querySelector(dx > 0 ? 'button[aria-label="העמוד הבא"]' : 'button[aria-label="העמוד הקודם"]');
+    if (btn) btn.click();
+  }
   document.addEventListener('touchstart', function (e) {
     multi = e.touches.length > 1;
     if (multi) { sx = null; return; }
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    sx = lx = e.touches[0].clientX; sy = ly = e.touches[0].clientY;
   }, { passive: true });
-  document.addEventListener('touchend', function (e) {
-    if (sx === null || multi) return;
-    var st = comp.state || {};
-    var open = typeof st.vb === 'number';
-    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-    sx = null;
-    if (!open || st.zoom) return;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    var btn = document.querySelector(dx > 0 ? 'button[aria-label="העמוד הבא"]' : 'button[aria-label="העמוד הקודם"]');
-    if (btn) btn.click();
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches.length > 1) { multi = true; return; }
+    lx = e.touches[0].clientX; ly = e.touches[0].clientY;
   }, { passive: true });
+  document.addEventListener('touchend', finish, { passive: true });
+  document.addEventListener('touchcancel', finish, { passive: true });
 })();
 </script>
 </body>
