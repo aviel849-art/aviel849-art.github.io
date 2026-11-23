@@ -754,6 +754,7 @@ a{color:#1E3A8A}a:hover{color:#172554}
 <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px">
 <a href="#contact" class="btn" style="display: inline-block; background: {{b.color}}; color: #1E2433; text-decoration: none; font-weight: 700; font-size: 16px; padding: 10px 22px; border-radius: 999px; min-height: 44px; box-sizing: border-box">ליצירת קשר על החוברת</a>
 <template data-sc="if" value="{{b.hasPres}}"><button type="button" onClick="{{b.openPres}}" class="btn" style="display: inline-block; background: #FFFFFF; color: #1E2433; font-family: inherit; font-weight: 700; font-size: 16px; padding: 8px 20px; border-radius: 999px; border: 2px solid {{b.color}}; min-height: 44px; box-sizing: border-box; cursor: pointer">🔊 מצגת לדוגמה עם רועי</button></template>
+<template data-sc="if" value="{{b.hasTools}}"><button type="button" onClick="{{b.openTools}}" class="btn" style="display: inline-block; background: #FFFFFF; color: #1E2433; font-family: inherit; font-weight: 700; font-size: 16px; padding: 8px 20px; border-radius: 999px; border: 2px solid {{b.color}}; min-height: 44px; box-sizing: border-box; cursor: pointer">🕒 כלי תרגול נלווים</button></template>
 <template data-sc="if" value="{{b.hasSamples}}"><button type="button" onClick="{{b.openGallery}}" class="btn" style="display: inline-block; background: #FFFFFF; color: #1E2433; font-family: inherit; font-weight: 700; font-size: 16px; padding: 8px 20px; border-radius: 999px; border: 2px solid {{b.color}}; min-height: 44px; box-sizing: border-box; cursor: pointer">לצפייה בעמודים לדוגמה</button></template>
 </div>
 <template data-sc="if" value="{{b.hasSpec}}"><button type="button" onClick="{{b.openSpec}}" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: none; background: none; font-family: inherit; font-size: 15px; font-weight: 700; color: #1E3A8A; text-decoration: underline; cursor: pointer">לפרטים המלאים על החוברת ←</button></template>
@@ -873,7 +874,7 @@ a{color:#1E3A8A}a:hover{color:#172554}
 </div>
 </template>
 <template data-sc="if" value="{{spec.hasTools}}">
-<div style="margin-top: 10px; background: {{spec.tint}}; border-radius: 14px; border-right: 6px solid {{spec.color}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+<div id="tools-sec" style="margin-top: 10px; background: {{spec.tint}}; border-radius: 14px; border-right: 6px solid {{spec.color}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
 <h3 style="margin: 0; font-family: 'David Libre', David, serif; font-size: 26px; color: #1E3A8A">כלי תרגול נלווים</h3>
 <p style="margin: 0">{{spec.toolsIntro}}</p>
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px">
@@ -1115,7 +1116,9 @@ var booklets = list.map(function (b, bi) {
     hasSpec: !!b.spec,
     openSpec: function () { self.setState({ sb: bi }); },
     hasPres: !!(b.pres && b.pres.length),
-    openPres: function () { self.setState({ pv: bi, pp: 0 }); }
+    openPres: function () { self.setState({ pv: bi, pp: 0 }); },
+    hasTools: !!(b.spec && SPECS[b.spec] && SPECS[b.spec].tools && SPECS[b.spec].tools.length),
+    openTools: function () { self.setState({ sb: bi }); setTimeout(function () { var el = document.getElementById('tools-sec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120); }
   });
 });
 var GROUPS = [
