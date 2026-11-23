@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שעון תרגול אינטראקטיבי</title>
+<style>
+  :root {
+    --navy: #1F3B57;
+    --hour-color: #C0392B;
+    --minute-color: #1F5FA8;
+    --face: #FFFFFF;
+    --ring: #2C2C2C;
+    --bg: #F5F6F8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    position: relative;
+  }
+  #clockWrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+  }
+  svg#clock {
+    max-width: 92vmin;
+    max-height: 82vh;
+    touch-action: none;
+  }
+  .hand {
+    cursor: grab;
+    touch-action: none;
+  }
+  .hand:active { cursor: grabbing; }
+  .hitzone {
+    fill: transparent;
+    stroke: transparent;
+    cursor: grab;
+    touch-action: none;
+  }
+  #digital {
+    font-size: clamp(28px, 6vmin, 64px);
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 2px;
+    background: white;
+    border: 3px solid var(--navy);
+    border-radius: 16px;
+    padding: 4px 28px;
+    margin-bottom: 6px;
+    transition: opacity .15s ease;
+    font-variant-numeric: tabular-nums;
+  }
+  #digital.hidden { opacity: 0; pointer-events: none; }
+  #controls {
+    display: flex;
+    gap: 14px;
+    padding: 14px 0 20px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    background: var(--navy);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  button:hover { box-shadow: 0 4px 10px rgba(0,0,0,.2); }
+  button:active { transform: scale(0.96); }
+  button.secondary {
+    background: white;
+    color: var(--navy);
+    border: 2px solid var(--navy);
+  }
+  #fullscreenBtn {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: white;
+    color: var(--navy);
+    border: 2px solid var(--navy);
+    padding: 8px 14px;
+    font-size: 15px;
+    z-index: 10;
+  }
+  #legend {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: var(--navy);
+    display: flex;
+    gap: 14px;
+    z-index: 10;
+  }
+  #legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 16px; height: 6px; border-radius: 3px; display: inline-block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <button id="fullscreenBtn">מסך מלא ⛶</button>
+  <div id="legend">
+    <span><span class="swatch" style="background:var(--hour-color)"></span> מחוג שעות</span>
+    <span><span class="swatch" style="background:var(--minute-color)"></span> מחוג דקות</span>
+  </div>
+
+  <div id="clockWrap">
+    <svg id="clock" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="300" cy="300" r="285" fill="var(--ring)"></circle>
+      <circle cx="300" cy="300" r="268" fill="var(--face)" stroke="var(--ring)" stroke-width="2"></circle>
+
+      <g id="ticks"></g>
+      <g id="numbers"></g>
+
+      <!-- hour hand -->
+      <g id="hourGroup" class="hand">
+        <line id="hourLine" x1="300" y1="300" x2="300" y2="170" stroke="var(--hour-color)" stroke-width="18" stroke-linecap="round"></line>
+        <circle id="hourHit" class="hitzone" cx="300" cy="170" r="26"></circle>
+      </g>
+
+      <!-- minute hand -->
+      <g id="minuteGroup" class="hand">
+        <line id="minuteLine" x1="300" y1="300" x2="300" y2="80" stroke="var(--minute-color)" stroke-width="9" stroke-linecap="round"></line>
+        <circle id="minuteHit" class="hitzone" cx="300" cy="80" r="24"></circle>
+      </g>
+
+      <circle cx="300" cy="300" r="12" fill="#1B1B1B"></circle>
+    </svg>
+  </div>
+
+  <div id="digital">12:00</div>
+
+  <div id="controls">
+    <button id="resetBtn">איפוס לשעה 12:00</button>
+    <button id="toggleDigitalBtn" class="secondary">הסתר שעה דיגיטלית</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const svg = document.getElementById('clock');
+  const CX = 300, CY = 300;
+  const ticksG = document.getElementById('ticks');
+  const numbersG = document.getElementById('numbers');
+  const hourLine = document.getElementById('hourLine');
+  const minuteLine = document.getElementById('minuteLine');
+  const hourGroup = document.getElementById('hourGroup');
+  const minuteGroup = document.getElementById('minuteGroup');
+  const digital = document.getElementById('digital');
+  const resetBtn = document.getElementById('resetBtn');
+  const toggleDigitalBtn = document.getElementById('toggleDigitalBtn');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+  // ---- draw static face: ticks + numbers ----
+  const NS = "http://www.w3.org/2000/svg";
+  for (let m = 0; m < 60; m++) {
+    const ang = (Math.PI / 180) * (90 - m * 6);
+    const isFive = m % 5 === 0;
+    const rOut = 268, rIn = isFive ? 240 : 254;
+    const x1 = CX + rOut * Math.cos(ang), y1 = CY - rOut * Math.sin(ang);
+    const x2 = CX + rIn * Math.cos(ang), y2 = CY - rIn * Math.sin(ang);
+    const line = document.createElementNS(NS, 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', '#2C2C2C');
+    line.setAttribute('stroke-width', isFive ? 5 : 2);
+    ticksG.appendChild(line);
+  }
+  for (let h = 1; h <= 12; h++) {
+    const ang = (Math.PI / 180) * (90 - h * 30);
+    const r = 205;
+    const x = CX + r * Math.cos(ang), y = CY - r * Math.sin(ang);
+    const text = document.createElementNS(NS, 'text');
+    text.setAttribute('x', x); text.setAttribute('y', y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('font-size', '48');
+    text.setAttribute('font-weight', '700');
+    text.setAttribute('font-family', 'Arial, sans-serif');
+    text.setAttribute('fill', '#1B1B1B');
+    text.textContent = h;
+    numbersG.appendChild(text);
+  }
+
+  // ---- state ----
+  // One shared time value (minutes past 12:00, 0–720), like a real geared clock:
+  // the minute hand turns 6° per minute and the hour hand 0.5° per minute.
+  let totalMinutes = 0;
+  let digitalVisible = true;
+
+  function setHourVisual(deg) {
+    const rad = (Math.PI / 180) * deg;
+    const len = 130;
+    hourLine.setAttribute('x2', CX + len * Math.sin(rad));
+    hourLine.setAttribute('y2', CY - len * Math.cos(rad));
+    document.getElementById('hourHit').setAttribute('cx', CX + len * Math.sin(rad));
+    document.getElementById('hourHit').setAttribute('cy', CY - len * Math.cos(rad));
+  }
+  function setMinuteVisual(deg) {
+    const rad = (Math.PI / 180) * deg;
+    const len = 220;
+    minuteLine.setAttribute('x2', CX + len * Math.sin(rad));
+    minuteLine.setAttribute('y2', CY - len * Math.cos(rad));
+    document.getElementById('minuteHit').setAttribute('cx', CX + len * Math.sin(rad));
+    document.getElementById('minuteHit').setAttribute('cy', CY - len * Math.cos(rad));
+  }
+
+  function updateDigital() {
+    const t = ((Math.round(totalMinutes) % 720) + 720) % 720;
+    let h = Math.floor(t / 60);
+    if (h === 0) h = 12;
+    const m = t % 60;
+    const mStr = String(m).padStart(2, '0');
+    digital.textContent = h + ':' + mStr;
+  }
+
+  function render() {
+    totalMinutes = ((totalMinutes % 720) + 720) % 720;
+    setMinuteVisual((totalMinutes % 60) * 6);
+    setHourVisual(totalMinutes * 0.5);
+    updateDigital();
+  }
+
+  // drag the minute hand: add the change in angle, so passing 12 moves the hour on/back
+  function moveMinuteTo(deg) {
+    const current = (totalMinutes % 60) * 6;
+    let delta = deg - current;
+    delta = ((delta + 540) % 360) - 180;   // shortest turn, -180..180
+    totalMinutes += delta / 6;
+    render();
+  }
+  // drag the hour hand: the minute hand follows to match
+  function moveHourTo(deg) {
+    const current = (totalMinutes * 0.5) % 360;
+    let delta = deg - current;
+    delta = ((delta + 540) % 360) - 180;
+    totalMinutes += delta * 2;
+    render();
+  }
+
+  function snap() {
+    totalMinutes = Math.round(totalMinutes);
+    render();
+  }
+
+  render();
+
+  // ---- dragging ----
+  function angleFromEvent(evt) {
+    const rect = svg.getBoundingClientRect();
+    const scaleX = 600 / rect.width, scaleY = 600 / rect.height;
+    const clientX = (evt.touches ? evt.touches[0].clientX : evt.clientX);
+    const clientY = (evt.touches ? evt.touches[0].clientY : evt.clientY);
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    const dx = x - CX, dy = y - CY;
+    let deg = Math.atan2(dx, -dy) * (180 / Math.PI);
+    return deg;
+  }
+
+  let dragging = null; // 'hour' | 'minute' | null
+
+  function startDrag(which) {
+    return function (evt) {
+      evt.preventDefault();
+      dragging = which;
+    };
+  }
+  hourGroup.addEventListener('mousedown', startDrag('hour'));
+  hourGroup.addEventListener('touchstart', startDrag('hour'), { passive: false });
+  minuteGroup.addEventListener('mousedown', startDrag('minute'));
+  minuteGroup.addEventListener('touchstart', startDrag('minute'), { passive: false });
+
+  function moveHandler(evt) {
+    if (!dragging) return;
+    evt.preventDefault();
+    const deg = angleFromEvent(evt);
+    if (dragging === 'hour') moveHourTo(deg);
+    else moveMinuteTo(deg);
+  }
+  function endHandler() {
+    if (dragging) snap();
+    dragging = null;
+  }
+
+  window.addEventListener('mousemove', moveHandler, { passive: false });
+  window.addEventListener('touchmove', moveHandler, { passive: false });
+  window.addEventListener('mouseup', endHandler);
+  window.addEventListener('touchend', endHandler);
+
+  // ---- controls ----
+  resetBtn.addEventListener('click', function () {
+    totalMinutes = 0;
+    render();
+  });
+
+  toggleDigitalBtn.addEventListener('click', function () {
+    digitalVisible = !digitalVisible;
+    digital.classList.toggle('hidden', !digitalVisible);
+    toggleDigitalBtn.textContent = digitalVisible ? 'הסתר שעה דיגיטלית' : 'הצג שעה דיגיטלית';
+  });
+
+  fullscreenBtn.addEventListener('click', function () {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(function(){});
+    } else {
+      document.exitFullscreen();
+    }
+  });
+})();
+</script>
+</body>
+</html>
